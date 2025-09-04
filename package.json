@@ -50,10 +50,5 @@
     "typescript-eslint": "^8.36.0",
     "vite": "npm:rolldown-vite@latest",
     "vitest": "latest"
-  },
-  "dependencies": {
-    "compression": "^1.8.1",
-    "express": "^5.1.0",
-    "sirv": "^3.0.2"
   }
 }
