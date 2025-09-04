@@ -1,26 +1,61 @@
-import { ServerRouter } from "./lib/ServerRouter.js";
+// ===== 간단한 라우터 =====
 import { HomePage, NotFoundPage, ProductDetailPage } from "./pages";
+import { router } from "./router";
+import { getProductsOnServer, getUniqueCategories } from "./mocks/server.js";
 
-export async function render(url) {
-  // 2. 라우트 매칭
-  const serverRouter = new ServerRouter();
+// ===== 라우트 등록 =====
+router.addRoute("/", () => {
+  const {
+    products,
+    pagination: { total: totalCount },
+  } = getProductsOnServer(router.query);
+  const categories = getUniqueCategories();
 
-  serverRouter.addRoute("/", HomePage);
-  serverRouter.addRoute("/product/:id/", ProductDetailPage);
-  serverRouter.addRoute("/404", NotFoundPage);
+  const results = {
+    products,
+    categories,
+    totalCount,
+  };
 
-  serverRouter.start(url);
+  return {
+    initialData: results,
+    html: HomePage(results),
+    head: "<title>쇼핑몰 홈</title>",
+  };
+});
+router.addRoute("/product/:id/", () => {
+  return {
+    initialData: { products: [] },
+    html: ProductDetailPage(),
+    head: "<title>쇼핑몰 상세페이지</title>",
+  };
+});
+router.addRoute(".*", () => {
+  return {
+    initialData: {},
+    html: NotFoundPage(),
+    head: "<title>페이지 없음</title>",
+  };
+});
 
-  const { pathname, query, params } = serverRouter;
+// ===== 메인 렌더 함수 =====
+export const render = async (url, query) => {
+  try {
+    router.setUrl(url, "http://localhost");
+    router.query = query;
+    router.start();
+    const routeInfo = router.findRoute(url);
 
-  // 3. 데이터 프리페칭
-  const routeParams = { pathname, query, params };
-  const data = await serverRouter.prefetch(routeParams);
-  const metaData = serverRouter.target.meta ? serverRouter.target.meta(data) : "";
-  const head = metaData;
+    const result = await routeInfo.handler(routeInfo.params);
+    console.log("✅ SSR 완료");
 
-  // 4. HTML 생성 - 프리패치된 데이터를 페이지 컴포넌트에 전달
-  const html = await serverRouter.target(data, query);
-
-  return { html, head, initialData: data };
-}
+    return result;
+  } catch (error) {
+    console.error("❌ SSR 에러:", error);
+    return {
+      head: "<title>에러</title>",
+      html: "<div>서버 오류가 발생했습니다.</div>",
+      initialData: { error: error.message },
+    };
+  }
+};
