@@ -7,7 +7,7 @@ import { PRODUCT_ACTIONS } from "./stores/actionTypes";
 // 라우터에 페이지별 경로와 컴포넌트 등록
 router.addRoute("/", HomePage);
 router.addRoute("/product/:id/", ProductDetailPage);
-router.addRoute(".*", NotFoundPage);
+router.addRoute("*", NotFoundPage);
 
 /**
  * SSR 렌더링 메인 함수 - 서버에서 HTML을 생성하여 클라이언트로 전송

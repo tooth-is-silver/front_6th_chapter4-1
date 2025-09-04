@@ -1,6 +1,6 @@
 // jest.setup.js
 import { setupServer } from "msw/node";
-import { handlers } from "./handlers";
+import { handlers } from "./handlers.js";
 
 const mswServer = setupServer(...handlers);
 
