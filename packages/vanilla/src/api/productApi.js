@@ -1,5 +1,13 @@
 // API 기본 URL 설정
-const BASE_URL = typeof window !== "undefined" ? "" : "http://localhost:5174";
+const getBaseUrl = () => {
+  if (typeof window !== "undefined") {
+    return "";
+  }
+  const prod = process.env.NODE_ENV === "production";
+  return prod ? "http://localhost:4174" : "http://localhost:5174";
+};
+
+const BASE_URL = getBaseUrl();
 
 // SSG 환경에서는 ServerRouter의 함수들을 직접 사용
 export async function getProducts(params = {}) {
