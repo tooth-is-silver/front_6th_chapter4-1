@@ -40,6 +40,37 @@ export const mockGetProducts = async (params = {}) => {
   };
 };
 
+// 서버용 개별 상품 조회 함수
+export const mockGetProduct = async (productId) => {
+  // 해당 상품 찾기
+  const product = items.find((item) => item.productId === productId);
+
+  if (!product) {
+    return null; // 상품 없음
+  }
+
+  // 기본 상품 정보 반환
+  return {
+    ...product,
+    description: `${product.title}에 대한 상세 설명입니다.`,
+    rating: 4,
+    reviewCount: 100,
+    stock: 50,
+  };
+};
+
+// 서버용 카테고리 목록 조회 함수
+export const mockGetCategories = async () => {
+  const categories = {};
+
+  items.forEach((item) => {
+    const cat1 = item.category1;
+    if (!categories[cat1]) categories[cat1] = {};
+  });
+
+  return categories;
+};
+
 export const render = async (url, query) => {
   console.log({ url, query });
   return "";
