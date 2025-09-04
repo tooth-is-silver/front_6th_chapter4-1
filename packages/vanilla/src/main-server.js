@@ -1,61 +1,165 @@
-// ===== 간단한 라우터 =====
 import { HomePage, NotFoundPage, ProductDetailPage } from "./pages";
 import { router } from "./router";
-import { getProductsOnServer, getUniqueCategories } from "./mocks/server.js";
+import { getProducts, getCategories, getProduct } from "./api/productApi.js";
+import { productStore } from "./stores";
+import { PRODUCT_ACTIONS } from "./stores/actionTypes";
 
-// ===== 라우트 등록 =====
-router.addRoute("/", () => {
-  const {
-    products,
-    pagination: { total: totalCount },
-  } = getProductsOnServer(router.query);
-  const categories = getUniqueCategories();
+// 라우터에 페이지별 경로와 컴포넌트 등록
+router.addRoute("/", HomePage);
+router.addRoute("/product/:id/", ProductDetailPage);
+router.addRoute(".*", NotFoundPage);
 
-  const results = {
-    products,
-    categories,
-    totalCount,
-  };
-
-  return {
-    initialData: results,
-    html: HomePage(results),
-    head: "<title>쇼핑몰 홈</title>",
-  };
-});
-router.addRoute("/product/:id/", () => {
-  return {
-    initialData: { products: [] },
-    html: ProductDetailPage(),
-    head: "<title>쇼핑몰 상세페이지</title>",
-  };
-});
-router.addRoute(".*", () => {
-  return {
-    initialData: {},
-    html: NotFoundPage(),
-    head: "<title>페이지 없음</title>",
-  };
-});
-
-// ===== 메인 렌더 함수 =====
-export const render = async (url, query) => {
+/**
+ * SSR 렌더링 메인 함수 - 서버에서 HTML을 생성하여 클라이언트로 전송
+ * @param {string} url - 요청받은 URL 경로
+ * @param {Object} query - URL의 쿼리 파라미터 객체
+ * @returns {Object} {html, head, data} 형태의 렌더링 결과
+ */
+export const render = async (url = "", query) => {
   try {
-    router.setUrl(url, "http://localhost");
-    router.query = query;
-    router.start();
-    const routeInfo = router.findRoute(url);
+    // 서버사이드 라우터 시작
+    router.start(url, query);
 
-    const result = await routeInfo.handler(routeInfo.params);
-    console.log("✅ SSR 완료");
+    const route = router.route;
+    if (!route) {
+      return {
+        html: NotFoundPage(),
+        head: "<title>페이지를 찾을 수 없습니다</title>",
+        data: JSON.stringify({}),
+      };
+    }
 
-    return result;
-  } catch (error) {
-    console.error("❌ SSR 에러:", error);
+    let head = "<title>안녕하세요</title>";
+    let initialData = {};
+
+    // 라우트별 데이터 설정
+    if (route.path === "/") {
+      try {
+        // 라우터의 쿼리 파라미터를 사용하여 검색/필터링/페이징 적용
+        const [productsResponse, categories] = await Promise.all([getProducts(router.query), getCategories()]);
+
+        // 서버사이드에서 스토어에 데이터 미리 설정 (하이드레이션)
+        productStore.dispatch({
+          type: PRODUCT_ACTIONS.SETUP,
+          payload: {
+            products: productsResponse.products || [],
+            totalCount: productsResponse.pagination?.total || 0,
+            categories: categories || {},
+            currentProduct: null,
+            relatedProducts: [],
+            loading: false,
+            error: null,
+            status: "done",
+          },
+        });
+
+        head = "<title>쇼핑몰 - 홈</title>";
+
+        // 클라이언트 하이드레이션용 초기 데이터 (window.__INITIAL_DATA__)
+        initialData = {
+          products: productsResponse.products || [],
+          categories: categories || {},
+          totalCount: productsResponse.pagination?.total || 0,
+        };
+      } catch (dataError) {
+        // 데이터 로드 실패 시 에러 상태로 스토어 설정
+        productStore.dispatch({
+          type: PRODUCT_ACTIONS.SETUP,
+          payload: {
+            products: [],
+            totalCount: 0,
+            categories: {},
+            currentProduct: null,
+            relatedProducts: [],
+            loading: false,
+            error: dataError.message,
+            status: "error",
+          },
+        });
+
+        initialData = {
+          products: [],
+          categories: {},
+          totalCount: 0,
+        };
+      }
+    } else if (route.path === "/product/:id/") {
+      const productId = route.params.id;
+
+      try {
+        const product = await getProduct(productId);
+        // 관련 상품
+        let relatedProducts = [];
+        if (product && product.category2) {
+          const relatedResponse = await getProducts({
+            category2: product.category2,
+            limit: 20,
+            page: 1,
+          });
+          // 현재 상품은 관련 상품에서 제외
+          relatedProducts = relatedResponse.products.filter((p) => p.productId !== productId);
+        }
+
+        // 상품 상세페이지용 스토어 설정
+        productStore.dispatch({
+          type: PRODUCT_ACTIONS.SETUP,
+          payload: {
+            products: [],
+            totalCount: 0,
+            categories: {},
+            currentProduct: product,
+            relatedProducts: relatedProducts,
+            loading: false,
+            error: null,
+            status: "done",
+          },
+        });
+
+        head = `<title>${product.title} - 쇼핑몰</title>`;
+
+        // 상품 상세페이지용 초기 데이터
+        initialData = {
+          product: product,
+          relatedProducts: relatedProducts,
+        };
+      } catch (dataError) {
+        // 상품 조회 실패 시 (존재하지 않는 상품 등)
+        productStore.dispatch({
+          type: PRODUCT_ACTIONS.SETUP,
+          payload: {
+            products: [],
+            totalCount: 0,
+            categories: {},
+            currentProduct: null,
+            relatedProducts: [],
+            loading: false,
+            error: dataError.message,
+            status: "error",
+          },
+        });
+
+        initialData = {
+          product: null,
+          relatedProducts: [],
+        };
+      }
+    }
+
+    const PageComponent = router.target;
+
+    const html = PageComponent();
+
+    // 최종 렌더링 결과 반환
     return {
-      head: "<title>에러</title>",
-      html: "<div>서버 오류가 발생했습니다.</div>",
-      initialData: { error: error.message },
+      html,
+      head,
+      data: JSON.stringify(initialData),
+    };
+  } catch (error) {
+    return {
+      html: `<div>서버 오류: ${error.message}</div>`,
+      head: "<title>서버 오류</title>",
+      data: JSON.stringify({}),
     };
   }
 };
