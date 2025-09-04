@@ -72,15 +72,42 @@ export const mockGetCategories = async () => {
   return categories;
 };
 
-export const render = async (url, query) => {
-  // 서버용 라우터 인스턴스 생성
-  const router = new ServerRouter("");
+// 라우트별 데이터 프리페칭 함수
+async function prefetchData(route, params) {
+  if (route.path === "/") {
+    // mockGetProducts + mockGetCategories
+    // productStore.dispatch(SETUP)
+    const productsData = await mockGetProducts({ limit: 20 });
+    const categoriesData = await mockGetCategories();
+    return { products: productsData.products, categories: categoriesData };
+  } else if (route.path === "/product/:id") {
+    // mockGetProduct(params.id)
+    // productStore.dispatch(SET_CURRENT_PRODUCT)
+    const productData = await mockGetProduct(params.id);
+    return { currentProduct: productData };
+  }
+  return {};
+}
 
-  // 라우트 등록 - 홈페이지
+export const render = async (url) => {
+  // 1. Store 초기화 (TODO: 나중에 실제 store 추가)
+
+  // 2. 라우트 매칭
+  const router = new ServerRouter("");
   router.addRoute("/", () => "HomePage");
-  // 라우트 등록 - 상품 상세
   router.addRoute("/product/:id", () => "ProductDetailPage");
 
-  console.log({ url, query });
-  return "";
+  const matchedRoute = router.findRoute(url);
+  if (!matchedRoute) {
+    return { html: "<h1>404 Not Found</h1>", head: "", initialData: {} };
+  }
+
+  // 3. 데이터 프리페칭
+  const initialData = await prefetchData(matchedRoute, matchedRoute.params);
+
+  // 4. HTML 생성 (TODO: 실제 컴포넌트 렌더링)
+  const html = `<h1>Server Rendered: ${matchedRoute.path}</h1>`;
+  const head = "";
+
+  return { html, head, initialData };
 };
