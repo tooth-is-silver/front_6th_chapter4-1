@@ -1,5 +1,6 @@
 // 글로벌 라우터 인스턴스
-import { Router, ServerRouter } from "../lib";
+import { Router } from "../lib";
+import { ServerRouter } from "../lib/ServerRouter.js";
 import { BASE_URL } from "../constants.js";
 
 // window 여부에 따라서 clinet router와 server router 분기
