@@ -1,56 +1,67 @@
 /**
- * 서버사이드 라우터
+ * 서버사이드 라우터 - window 객체가 없는 SSR 환경에서 사용
  */
-import { BaseRouter } from "./BaseRouter.js";
+export class ServerRouter {
+  #routes;
+  #route;
+  #baseUrl;
+  #currentQuery = {};
 
-export class ServerRouter extends BaseRouter {
-  #currentUrl = "/";
-  #origin = "http://localhost";
-  #queryParams = {};
-
+  // 모든 라우트 설정 초기화 (라우트 저장소, 활성 라우트, url)
   constructor(baseUrl = "") {
-    super(baseUrl);
+    this.#routes = new Map();
+    this.#route = null;
+    this.#baseUrl = baseUrl.replace(/\/$/, "");
   }
 
+  // 현재 설정된 쿼리 파라미터를 반환 (서버 환경에서는 직접 관리)
   get query() {
-    // 서버에서 설정된 쿼리 파라미터 사용
-    return this.#queryParams;
+    return this.#currentQuery;
   }
 
+  // 새 쿼리 파라미터로 URL 생성하고 라우팅 업데이트
   set query(newQuery) {
-    this.#queryParams = { ...newQuery };
+    const newUrl = ServerRouter.getUrl(newQuery, this.#baseUrl);
+    this.push(newUrl);
   }
 
-  getCurrentUrl() {
-    return this.#currentUrl;
+  // 현재 라우트의 경로 파라미터 반환 (예: /product/:id에서 {id: "123"})
+  get params() {
+    return this.#route?.params ?? {};
   }
 
-  getOrigin() {
-    return this.#origin;
+  // 현재 매칭된 라우트 정보 반환
+  get route() {
+    return this.#route;
   }
 
-  /**
-   * 서버 URL 설정
-   * @param {string} url - 요청 URL
-   * @param {string} [origin] - 서버 origin (선택적)
-   */
-  setUrl(url, origin = "http://localhost") {
-    this.#currentUrl = url;
-    this.#origin = origin;
-    this.updateRoute(this.getCurrentUrl());
+  // 현재 라우트의 핸들러 함수 반환
+  get target() {
+    return this.#route?.handler;
   }
 
   /**
-   * 서버사이드에서는 네비게이션 불가
+   * 라우트 등록 - URL 패턴과 핸들러 함수를 매핑
+   * @param {string} path - 경로 패턴 (예: "/product/:id")
+   * @param {Function} handler - 라우트 핸들러 함수
    */
-  push() {
-    throw new Error("Navigation is not supported in server-side routing");
-  }
+  addRoute(path, handler) {
+    // 동적 파라미터를 정규식으로 변환하는 과정
+    const paramNames = [];
+    const regexPath = path
+      .replace(/:\w+/g, (match) => {
+        paramNames.push(match.slice(1)); // ':id' -> 'id'로 변환해서 저장
+        return "([^/]+)";
+      })
+      .replace(/\//g, "\\/");
 
-  /**
-   * 라우터 시작
-   */
-  start() {
-    this.updateRoute(this.getCurrentUrl());
+    const regex = new RegExp(`^${this.#baseUrl}${regexPath}$`);
+
+    // 라우트 정보를 Map에 저장
+    this.#routes.set(path, {
+      regex,
+      paramNames,
+      handler,
+    });
   }
 }
