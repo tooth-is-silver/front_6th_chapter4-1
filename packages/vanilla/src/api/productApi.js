@@ -1,20 +1,7 @@
 // API 기본 URL 설정
-const getApiBaseUrl = async () => {
-  // Node.js 환경(서버 또는 SSG)인지 확인
-  const isServerSide = typeof window === "undefined" || (import.meta.env && import.meta.env.SSR);
+const BASE_URL = typeof window !== "undefined" ? "" : "http://localhost:5174";
 
-  if (isServerSide) {
-    // 서버 환경에서는 절대 URL 사용
-    // 개발 환경: 5173, SSR 서버: 5174
-    const port = process.env.PORT || 5174;
-
-    return `http://localhost:${port}`;
-  } else {
-    // 클라이언트 환경에서는 상대 URL 사용
-    return "";
-  }
-};
-
+// SSG 환경에서는 ServerRouter의 함수들을 직접 사용
 export async function getProducts(params = {}) {
   const { limit = 20, search = "", category1 = "", category2 = "", sort = "price_asc" } = params;
   const page = params.current ?? params.page ?? 1;
@@ -28,20 +15,17 @@ export async function getProducts(params = {}) {
     sort,
   });
 
-  const baseUrl = await getApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/products?${searchParams}`);
-
+  const response = await fetch(`${BASE_URL}/api/products?${searchParams}`);
   return await response.json();
 }
 
 export async function getProduct(productId) {
-  const baseUrl = await getApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/products/${productId}`);
+  const response = await fetch(`${BASE_URL}/api/products/${productId}`);
   return await response.json();
 }
 
 export async function getCategories() {
-  const baseUrl = await getApiBaseUrl();
-  const response = await fetch(`${baseUrl}/api/categories`);
+  // 클라이언트 환경에서는 기존 API 호출 유지
+  const response = await fetch(`${BASE_URL}/api/categories`);
   return await response.json();
 }
