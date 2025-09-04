@@ -3,6 +3,7 @@ import { router } from "./router";
 import { getProducts, getCategories, getProduct } from "./api/productApi.js";
 import { productStore } from "./stores";
 import { PRODUCT_ACTIONS } from "./stores/actionTypes";
+import { BASE_URL } from "./constants.js";
 
 // 라우터에 페이지별 경로와 컴포넌트 등록
 router.addRoute("/", HomePage);
@@ -17,8 +18,14 @@ router.addRoute(".*", NotFoundPage);
  */
 export const render = async (url = "", query) => {
   try {
+    // URL 정규화 - BASE_URL 제거하여 상대 경로로 변환
+    let normalizedUrl = url;
+    if (url.includes(BASE_URL) && BASE_URL !== "/") {
+      normalizedUrl = url.replace(BASE_URL, "/").replace(/\/+/g, "/");
+    }
+
     // 서버사이드 라우터 시작
-    router.start(url, query);
+    router.start(normalizedUrl, query);
 
     const route = router.route;
     if (!route) {

@@ -80,7 +80,9 @@ export class ServerRouter {
       })
       .replace(/\//g, "\\/");
 
-    const regex = new RegExp(`^${this.#baseUrl}${regexPath}$`);
+    // baseUrl과 regexPath 사이의 중복 슬래시 제거
+    const normalizedPath = `${this.#baseUrl}${regexPath}`.replace(/\/+/g, "/");
+    const regex = new RegExp(`^${normalizedPath}$`);
 
     // 라우트 정보를 Map에 저장
     this.#routes.set(path, {

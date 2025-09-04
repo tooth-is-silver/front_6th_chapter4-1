@@ -20,9 +20,10 @@ mswServer.listen({
 
 // 환경별 정적 파일 서빙 및 미들웨어 설정
 if (isProd) {
-  // 프로덕션 환경: 빌드된 정적 파일 서빙
+  // 프로덕션 환경: 빌드된 정적 파일 서빙 (assets만 서빙하도록 제한)
   app.use(compression());
-  app.use(baseUrl, sirv("dist/vanilla", { dev: false }));
+  app.use(`${baseUrl}assets`, sirv("dist/vanilla/assets", { dev: false }));
+  app.use(`${baseUrl}mockServiceWorker.js`, sirv("dist/vanilla", { dev: false }));
 } else {
   // 개발 환경: Vite 개발 서버를 미들웨어로 사용
   const { createServer } = await import("vite");
