@@ -2,7 +2,7 @@ import compression from "compression";
 import express from "express";
 import fs from "fs/promises";
 import sirv from "sirv";
-import { mswServer } from "./src/mocks/serverBrowser.js";
+import { mswServer } from "./src/mocks/mswServer.js";
 
 // 환경 변수 및 설정
 const isProd = process.env.NODE_ENV === "production";
