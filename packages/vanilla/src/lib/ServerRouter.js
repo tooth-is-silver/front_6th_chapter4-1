@@ -42,4 +42,34 @@ export class ServerRouter {
       handler,
     });
   }
+
+  /**
+   * URL에 매칭되는 라우트를 찾기 - 서버에서 사용
+   * @param {string} url - 매칭할 URL 경로
+   * @returns {Object|null} 매칭된 라우트 정보 또는 null
+   */
+  findRoute(url) {
+    // 서버 환경에서는 전달받은 URL 문자열을 직접 파싱 (쿼리스트링 제거)
+    const pathname = url.split("?")[0];
+
+    // 등록된 모든 라우트를 순회하며 매칭 확인
+    for (const [routePath, route] of this.#routes) {
+      const match = pathname.match(route.regex);
+      if (match) {
+        // 매치된 동적 파라미터들을 객체로 변환
+        const params = {};
+        route.paramNames.forEach((name, index) => {
+          params[name] = match[index + 1]; // 첫 번째 캡처 그룹부터 시작
+        });
+
+        // 클라이언트 Router와 동일한 형태로 반환
+        return {
+          ...route,
+          params,
+          path: routePath,
+        };
+      }
+    }
+    return null; // 매칭되는 라우트 없음
+  }
 }
