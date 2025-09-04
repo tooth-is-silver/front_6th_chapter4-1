@@ -7,9 +7,6 @@ import items from "./src/mocks/items.json" with { type: "json" };
 // 서버 사이드 렌더링 함수 가져오기
 const { render } = await import("./dist/vanilla-ssr/main-server.js");
 
-// 기본 베이스 URL
-const BASE = "/front_6th_chapter4-1/vanilla/";
-
 /**
  * 주어진 URL을 렌더링하여 HTML 파일로 생성
  * @param {string} url - 렌더링할 URL
@@ -41,14 +38,14 @@ async function generateStaticSite() {
   mswServer.listen({ onUnhandledRequest: "bypass" });
 
   try {
-    // 홈페이지 생성
-    await writeRoute(BASE, template, templatePath);
+    // 홈페이지 생성 (루트 경로로 전달)
+    await writeRoute("/", template, templatePath);
 
     const productIds = items.slice(1, 10).map((p) => p.productId);
 
     // 각 상품별로 상세 페이지 생성
     for (const id of productIds) {
-      const url = `${BASE}product/${id}/`;
+      const url = `/product/${id}/`; // 베이스 URL 제거, 상대 경로만 사용
       const outDir = `../../dist/vanilla/product/${id}`;
       await fs.mkdir(outDir, { recursive: true });
       await writeRoute(url, template, `${outDir}/index.html`);

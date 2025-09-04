@@ -7,7 +7,7 @@ import { PRODUCT_ACTIONS } from "./stores/actionTypes";
 // 라우터에 페이지별 경로와 컴포넌트 등록
 router.addRoute("/", HomePage);
 router.addRoute("/product/:id/", ProductDetailPage);
-router.addRoute("*", NotFoundPage);
+router.addRoute(".*", NotFoundPage);
 
 /**
  * SSR 렌더링 메인 함수 - 서버에서 HTML을 생성하여 클라이언트로 전송
@@ -17,8 +17,20 @@ router.addRoute("*", NotFoundPage);
  */
 export const render = async (url = "", query) => {
   try {
+    // URL 정규화: 베이스 URL이 포함된 경우 제거
+    const baseUrl = "/front_6th_chapter4-1/vanilla/";
+    let normalizedUrl = url;
+
+    if (url.includes(baseUrl)) {
+      normalizedUrl = url.replace(baseUrl, "/");
+      if (normalizedUrl === "/") normalizedUrl = "/";
+    } else if (url === baseUrl.slice(0, -1)) {
+      // 마지막 슬래시 없는 경우
+      normalizedUrl = "/";
+    }
+
     // 서버사이드 라우터 시작
-    router.start(url, query);
+    router.start(normalizedUrl, query);
 
     const route = router.route;
     if (!route) {
