@@ -123,4 +123,61 @@ export class ServerRouter {
 
     return null;
   }
+
+  /**
+   * 쿼리 파라미터 문자열을 객체로 파싱
+   * @param {string} search - location.search 또는 쿼리 문자열 (예: "?page=1&limit=20")
+   * @returns {Object} 파싱된 쿼리 객체
+   */
+  static parseQuery = (search) => {
+    const params = new URLSearchParams(search);
+    const query = {};
+
+    for (const [key, value] of params) {
+      query[key] = value;
+    }
+    return query;
+  };
+
+  /**
+   * 객체를 쿼리 문자열로 변환 (빈 값들은 제외)
+   * @param {Object} query - 쿼리 객체 (예: {page: 1, search: "test"})
+   * @returns {string} 쿼리 문자열 ("page=1&search=test" 형태)
+   */
+  static stringifyQuery = (query) => {
+    const params = new URLSearchParams();
+
+    for (const [key, value] of Object.entries(query)) {
+      // null, undefined, 빈 문자열이 아닌 값들만 추가
+      if (value !== null && value !== undefined && value !== "") {
+        params.set(key, String(value));
+      }
+    }
+    return params.toString();
+  };
+
+  /**
+   * 새로운 쿼리 파라미터와 기존 쿼리를 병합하여 완전한 URL 생성
+   * @param {Object} newQuery - 새로 추가할 쿼리 객체
+   * @param {string} pathname - 경로
+   * @param {string} baseUrl - 베이스 URL
+   * @returns {string} 완성된 URL (예: "/products?page=2&search=test")
+   */
+  static getUrl = (newQuery, pathname = "/", baseUrl = "") => {
+    // 현재 쿼리 파라미터 가져오기
+    const currentQuery = ServerRouter.parseQuery();
+    // 기존 쿼리에 새 쿼리 병합
+    const updatedQuery = { ...currentQuery, ...newQuery };
+
+    // 빈 값들 제거 (null, undefined, 빈 문자열)
+    Object.keys(updatedQuery).forEach((key) => {
+      if (updatedQuery[key] === null || updatedQuery[key] === undefined || updatedQuery[key] === "") {
+        delete updatedQuery[key];
+      }
+    });
+
+    const queryString = ServerRouter.stringifyQuery(updatedQuery);
+    // 최종 URL 조합: baseUrl + pathname + queryString
+    return `${baseUrl}${pathname.replace(baseUrl, "")}${queryString ? `?${queryString}` : ""}`;
+  };
 }
