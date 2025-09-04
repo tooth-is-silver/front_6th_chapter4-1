@@ -41,6 +41,31 @@ export class ServerRouter {
   }
 
   /**
+   * 서버사이드 네비게이션 실행 - URL 변경 시 호출
+   * (브라우저와 달리 히스토리 API 사용하지 않고 내부 상태만 업데이트)
+   * @param {string} url - 이동할 경로 (기본값: "/")
+   */
+  push(url = "/") {
+    try {
+      // 주어진 URL에 매칭되는 라우트를 찾아서 현재 라우트로 설정
+      this.#route = this.#findRoute(url);
+    } catch (error) {
+      console.error("서버 네비게이션 오류:", error);
+    }
+  }
+
+  /**
+   * 서버 라우터 초기화 및 시작 - SSR 렌더링 시작점에서 호출
+   * 쿼리 파라미터를 설정하고 url에 매칭되는 라우트 적용
+   * @param {string} url - 초기 URL 경로 (기본값: "/")
+   * @param {object} query - 초기 쿼리 파라미터 객체 (기본값: {})
+   */
+  start(url = "/", query = {}) {
+    this.#currentQuery = query;
+    this.#route = this.#findRoute(url);
+  }
+
+  /**
    * 라우트 등록 - URL 패턴과 핸들러 함수를 매핑
    * @param {string} path - 경로 패턴 (예: "/product/:id")
    * @param {Function} handler - 라우트 핸들러 함수
@@ -71,7 +96,7 @@ export class ServerRouter {
    * @param {string} origin - 서버 도메인 (기본값: "http://localhost")
    * @returns {Object|null} 매칭된 라우트 정보 또는 null
    */
-  findRoute(url = "/", origin = "http://localhost") {
+  #findRoute(url = "/", origin = "http://localhost") {
     // URL 객체를 생성해서 pathname 추출 (쿼리스트링, 해시 제외)
     const { pathname } = new URL(url, origin);
 
