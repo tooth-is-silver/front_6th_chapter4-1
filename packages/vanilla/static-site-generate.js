@@ -1,11 +1,13 @@
 // SSG(Static Site Generation) 스크립트
 // 홈페이지와 상품 상세 페이지를 미리 생성하여 정적 파일로 저장
 import fs from "fs/promises";
-import { mswServer } from "./src/mocks/serverBrowser.js";
+import { mswServer } from "./src/mocks/mswServer.js";
 import items from "./src/mocks/items.json" with { type: "json" };
 
 // 서버 사이드 렌더링 함수 가져오기
 const { render } = await import("./dist/vanilla-ssr/main-server.js");
+
+const BASE = "/front_6th_chapter4-1/vanilla/";
 
 /**
  * 주어진 URL을 렌더링하여 HTML 파일로 생성
@@ -39,13 +41,13 @@ async function generateStaticSite() {
 
   try {
     // 홈페이지 생성 (루트 경로로 전달)
-    await writeRoute("/", template, templatePath);
+    await writeRoute(BASE, template, templatePath);
 
     const productIds = items.slice(1, 10).map((p) => p.productId);
 
     // 각 상품별로 상세 페이지 생성
     for (const id of productIds) {
-      const url = `/product/${id}/`; // 베이스 URL 제거, 상대 경로만 사용
+      const url = `${BASE}/product/${id}/`;
       const outDir = `../../dist/vanilla/product/${id}`;
       await fs.mkdir(outDir, { recursive: true });
       await writeRoute(url, template, `${outDir}/index.html`);

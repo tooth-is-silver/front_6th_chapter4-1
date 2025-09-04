@@ -17,18 +17,62 @@ const enableMocking = () =>
     }),
   );
 
-function main() {
-  // 서버 데이터 복원
-  if (window.__INITIAL_DATA__) {
-    const data = window.__INITIAL_DATA__;
-    if (data.products) productStore.dispatch(PRODUCT_ACTIONS.SETUP, data);
-    if (data.currentProduct) productStore.dispatch(PRODUCT_ACTIONS.SET_CURRENT_PRODUCT, data);
-    delete window.__INITIAL_DATA__;
+// SSR 데이터를 클라이언트 스토어에 hydrate
+function hydrateFromSSRData() {
+  if (typeof window === "undefined" || !window.__INITIAL_DATA__) {
+    return;
   }
 
+  try {
+    const initialData = window.__INITIAL_DATA__;
+
+    const currentPath = window.location.pathname;
+
+    // 홈페이지 hydration
+    if (currentPath === "/" && initialData.products) {
+      productStore.dispatch({
+        type: PRODUCT_ACTIONS.SETUP,
+        payload: {
+          products: initialData.products || [],
+          totalCount: initialData.totalCount || 0,
+          categories: initialData.categories || {},
+          currentProduct: null,
+          relatedProducts: [],
+          loading: false,
+          error: null,
+          status: "done",
+        },
+      });
+    }
+    // 상품 상세 페이지 hydration
+    else if (currentPath.includes("/product/") && initialData.product) {
+      productStore.dispatch({
+        type: PRODUCT_ACTIONS.SETUP,
+        payload: {
+          products: [],
+          totalCount: 0,
+          categories: {},
+          currentProduct: initialData.product,
+          relatedProducts: initialData.relatedProducts || [],
+          loading: false,
+          error: null,
+          status: "done",
+        },
+      });
+    }
+
+    // hydration 완료 플래그
+    window.__HYDRATED__ = true;
+  } catch (error) {
+    console.error("❌ SSR hydration 실패", error);
+  }
+}
+
+function main() {
   registerAllEvents();
   registerGlobalEvents();
   loadCartFromStorage();
+  hydrateFromSSRData();
   initRender();
   router.start();
 }

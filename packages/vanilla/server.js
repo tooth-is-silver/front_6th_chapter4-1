@@ -1,6 +1,6 @@
 import compression from "compression";
 import express from "express";
-import fs from "fs";
+import fs from "fs/promises";
 import sirv from "sirv";
 import { mswServer } from "./src/mocks/serverBrowser.js";
 
@@ -8,12 +8,9 @@ import { mswServer } from "./src/mocks/serverBrowser.js";
 const isProd = process.env.NODE_ENV === "production";
 const port = process.env.PORT || 5173;
 const baseUrl = process.env.BASE || (isProd ? "/front_6th_chapter4-1/vanilla/" : "/");
-const templateHtml = isProd ? fs.readFileSync("dist/vanilla/index.html", "utf-8") : "";
+const templateHtml = isProd ? await fs.readFile("dist/vanilla/index.html", "utf-8") : "";
 const app = express();
 
-// 런타임에 결정되는 변수들 (개발/프로덕션 환경에 따라 달라짐)
-let template;
-let render;
 let vite;
 
 // MSW 서버 시작 (API 모킹을 위해)
@@ -39,8 +36,11 @@ if (isProd) {
 }
 
 // 모든 라우트를 처리하는 SSR 핸들러
-app.get("*all", async (req, res) => {
+app.get(/^(?!.*\/api).*/, async (req, res) => {
   try {
+    let template;
+    let render;
+
     if (!isProd) {
       // 개발 환경: 매 요청마다 템플릿을 다시 읽고 변환
       template = await fs.readFile("./index.html", "utf-8");

@@ -17,20 +17,8 @@ router.addRoute(".*", NotFoundPage);
  */
 export const render = async (url = "", query) => {
   try {
-    // URL 정규화: 베이스 URL이 포함된 경우 제거
-    const baseUrl = "/front_6th_chapter4-1/vanilla/";
-    let normalizedUrl = url;
-
-    if (url.includes(baseUrl)) {
-      normalizedUrl = url.replace(baseUrl, "/");
-      if (normalizedUrl === "/") normalizedUrl = "/";
-    } else if (url === baseUrl.slice(0, -1)) {
-      // 마지막 슬래시 없는 경우
-      normalizedUrl = "/";
-    }
-
     // 서버사이드 라우터 시작
-    router.start(normalizedUrl, query);
+    router.start(url, query);
 
     const route = router.route;
     if (!route) {
