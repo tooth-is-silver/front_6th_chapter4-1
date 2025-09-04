@@ -64,4 +64,38 @@ export class ServerRouter {
       handler,
     });
   }
+
+  /**
+   * 주어진 URL과 매칭되는 라우트를 찾아서 반환
+   * @param {string} url - 매칭할 URL (기본값: "/")
+   * @param {string} origin - 서버 도메인 (기본값: "http://localhost")
+   * @returns {Object|null} 매칭된 라우트 정보 또는 null
+   */
+  findRoute(url = "/", origin = "http://localhost") {
+    // URL 객체를 생성해서 pathname 추출 (쿼리스트링, 해시 제외)
+    const { pathname } = new URL(url, origin);
+
+    // 등록된 모든 라우트를 순회하며 매칭 확인
+    for (const [routePath, route] of this.#routes) {
+      const match = pathname.match(route.regex); // 정규식으로 URL 패턴 매칭
+
+      if (match) {
+        // 매칭된 동적 파라미터들을 객체로 변환
+        // 예: /product/123 → {id: "123"}
+        const params = {};
+        route.paramNames.forEach((name, index) => {
+          params[name] = match[index + 1];
+        });
+
+        // 라우트 정보와 추출된 파라미터를 함께 반환
+        return {
+          ...route,
+          params,
+          path: routePath,
+        };
+      }
+    }
+
+    return null;
+  }
 }
