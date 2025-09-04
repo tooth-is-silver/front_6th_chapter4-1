@@ -43,7 +43,10 @@ async function generateStaticSite() {
     // 홈페이지 생성 (루트 경로로 전달)
     await writeRoute(BASE, template, templatePath);
 
-    const productIds = items.slice(1, 10).map((p) => p.productId);
+    // 상품 상세
+    const productIds = items.slice(100, 130).map((p) => p.productId);
+    const testItem = items.find((product) => product.productId === "86940857379");
+    productIds.push(testItem.productId);
 
     // 각 상품별로 상세 페이지 생성
     for (const id of productIds) {
