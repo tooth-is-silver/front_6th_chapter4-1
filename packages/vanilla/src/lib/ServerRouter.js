@@ -1,3 +1,4 @@
+import { getProducts, getProduct, getCategories } from "../api/productApi.js";
 /**
  * SSG 서버 라우터 - 서버 환경에서 라우팅 처리
  */
@@ -10,6 +11,12 @@ export class ServerRouter {
     this.#routes = new Map();
     // baseUrl 설정 - 서버에서는 window 객체 없이 직접 전달받아 설정
     this.#baseUrl = baseUrl.replace(/\/$/, "");
+
+    // 현재 라우트 정보 저장용 속성들
+    this.pathname = "";
+    this.query = {};
+    this.params = {};
+    this.target = null;
   }
 
   get baseUrl() {
@@ -83,6 +90,75 @@ export class ServerRouter {
       path, // 원본 경로 패턴 (예: "/product/:id")
       ...route, // regex, paramNames, handler 포함
     }));
+  }
+
+  /**
+   * 라우터 시작 - URL 파싱 및 라우트 매칭
+   * @param {string} url - 처리할 URL
+   */
+  start(url) {
+    const [pathname, search = ""] = url.split("?");
+    this.pathname = pathname;
+    this.query = ServerRouter.parseQuery(search);
+
+    // 라우트 매칭
+    const matchedRoute = this.findRoute(url);
+    if (matchedRoute) {
+      this.params = matchedRoute.params;
+      this.target = matchedRoute.handler;
+    } else {
+      this.target = null;
+    }
+  }
+
+  /**
+   * 라우트별 데이터 프리페칭
+   * @param {Object} routeParams - { pathname, query, params }
+   * @returns {Object} 프리페칭된 데이터
+   */
+  async prefetch({ pathname, query, params }) {
+    if (pathname === "/") {
+      // 홈페이지: 상품 목록과 카테고리 데이터 로드
+      const { search = "", category1 = "", category2 = "", sort = "price_asc", limit = "20" } = query;
+      const productsData = await getProducts({
+        search,
+        category1,
+        category2,
+        sort,
+        limit: parseInt(limit),
+        current: 1,
+      });
+      const categoriesData = await getCategories();
+
+      return {
+        products: productsData.products,
+        categories: categoriesData,
+        totalCount: productsData.totalCount,
+        loading: false,
+        error: null,
+      };
+    } else if (pathname.startsWith("/product/")) {
+      // 상품 상세 페이지: 해당 상품과 관련 상품 로드
+      const productData = await getProduct(params.id);
+
+      // 관련 상품 로드 (같은 카테고리2의 다른 상품들)
+      let relatedProducts = [];
+      if (productData && productData.category2) {
+        const relatedData = await getProducts({
+          category2: productData.category2,
+          limit: 20,
+        });
+        relatedProducts = relatedData.products.filter((p) => p.productId !== productData.productId);
+      }
+
+      return {
+        currentProduct: productData,
+        relatedProducts: relatedProducts,
+        loading: false,
+        error: null,
+      };
+    }
+    return {};
   }
 
   /**
