@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import { ServerRouter } from "./lib/ServerRouter.js";
 
 // ESM에서 __dirname 대체
 const __filename = fileURLToPath(import.meta.url);
@@ -72,6 +73,14 @@ export const mockGetCategories = async () => {
 };
 
 export const render = async (url, query) => {
+  // 서버용 라우터 인스턴스 생성
+  const router = new ServerRouter("");
+
+  // 라우트 등록 - 홈페이지
+  router.addRoute("/", () => "HomePage");
+  // 라우트 등록 - 상품 상세
+  router.addRoute("/product/:id", () => "ProductDetailPage");
+
   console.log({ url, query });
   return "";
 };
