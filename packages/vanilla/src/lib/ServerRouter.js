@@ -72,4 +72,31 @@ export class ServerRouter {
     }
     return null; // 매칭되는 라우트 없음
   }
+
+  /**
+   * 등록된 모든 라우트 목록 반환 - SSG 빌드용
+   * @returns {Array} 라우트 목록 배열
+   */
+  getAllRoutes() {
+    // Map의 모든 엔트리를 배열로 변환하여 반환
+    return Array.from(this.#routes.entries()).map(([path, route]) => ({
+      path, // 원본 경로 패턴 (예: "/product/:id")
+      ...route, // regex, paramNames, handler 포함
+    }));
+  }
+
+  /**
+   * 쿼리 파라미터를 객체로 파싱 - 정적 메서드
+   * @param {string} search - 쿼리 문자열 (예: "?page=1&limit=10")
+   * @returns {Object} 파싱된 쿼리 객체
+   */
+  static parseQuery(search = "") {
+    // 서버에서는 URLSearchParams를 직접 사용하여 파싱
+    const params = new URLSearchParams(search);
+    const query = {};
+    for (const [key, value] of params) {
+      query[key] = value;
+    }
+    return query;
+  }
 }
