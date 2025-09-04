@@ -1,76 +1,10 @@
-import { readFileSync } from "fs";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
 import { ServerRouter } from "./lib/ServerRouter.js";
+import { getProducts, getProduct, getCategories } from "./api/productApi.js";
 
-// ESM에서 __dirname 대체
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// items.json 데이터 로드 - 서버에서 mock 데이터 사용을 위해
-const itemsPath = join(__dirname, "mocks", "items.json");
-const items = JSON.parse(readFileSync(itemsPath, "utf-8"));
-
-// 서버용 상품 목록 조회 함수
-export const mockGetProducts = async (params = {}) => {
-  const { limit = 20, search = "" } = params;
-  const page = params.current ?? params.page ?? 1;
-
-  // 검색 필터링
-  let filtered = [...items];
-  if (search) {
-    const searchTerm = search.toLowerCase();
-    filtered = filtered.filter(
-      (item) => item.title.toLowerCase().includes(searchTerm) || item.brand.toLowerCase().includes(searchTerm),
-    );
-  }
-
-  // 페이지네이션
-  const startIndex = (page - 1) * limit;
-  const endIndex = startIndex + limit;
-  const paginatedProducts = filtered.slice(startIndex, endIndex);
-
-  return {
-    products: paginatedProducts,
-    pagination: {
-      page,
-      limit,
-      total: filtered.length,
-      totalPages: Math.ceil(filtered.length / limit),
-    },
-  };
-};
-
-// 서버용 개별 상품 조회 함수
-export const mockGetProduct = async (productId) => {
-  // 해당 상품 찾기
-  const product = items.find((item) => item.productId === productId);
-
-  if (!product) {
-    return null; // 상품 없음
-  }
-
-  // 기본 상품 정보 반환
-  return {
-    ...product,
-    description: `${product.title}에 대한 상세 설명입니다.`,
-    rating: 4,
-    reviewCount: 100,
-    stock: 50,
-  };
-};
-
-// 서버용 카테고리 목록 조회 함수
-export const mockGetCategories = async () => {
-  const categories = {};
-
-  items.forEach((item) => {
-    const cat1 = item.category1;
-    if (!categories[cat1]) categories[cat1] = {};
-  });
-
-  return categories;
-};
+// productApi.js 함수들을 직접 export (환경별 baseUrl 처리 로직 포함)
+export const mockGetProducts = getProducts;
+export const mockGetProduct = getProduct;
+export const mockGetCategories = getCategories;
 
 // 라우트별 데이터 프리페칭 함수
 async function prefetchData(route, params) {
