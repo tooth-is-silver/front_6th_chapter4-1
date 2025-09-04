@@ -237,7 +237,18 @@ function ProductDetail({ product, relatedProducts = [] }) {
 export const ProductDetailPage = withLifecycle(
   {
     onMount: () => {
-      loadProductDetailForPage(router.params.id);
+      // SSG 서버 실행
+      if (typeof window !== "undefined") {
+        const { currentProduct, status } = productStore.getState();
+        const productId = router.params.id;
+        // Hydration된 데이터가 있으면 API 호출 스킵
+        if (window.__HYDRATED__ && currentProduct && currentProduct.productId === productId && status === "done") {
+          console.log("✅ SSR 데이터 이미 있어서 API 요청 스킵");
+          return;
+        }
+
+        loadProductDetailForPage(router.params.id);
+      }
     },
     watches: [() => [router.params.id], () => loadProductDetailForPage(router.params.id)],
   },
