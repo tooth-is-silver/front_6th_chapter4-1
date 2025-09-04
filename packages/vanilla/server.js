@@ -1,59 +1,77 @@
 import compression from "compression";
 import express from "express";
 import fs from "fs";
-import { dirname, join } from "path";
 import sirv from "sirv";
-import { fileURLToPath } from "url";
+import { mockServer } from "./src/mocks/server-mock.js";
 
-// 환경 변수 설정
+// 환경 변수 및 설정
 const isProd = process.env.NODE_ENV === "production";
 const port = process.env.PORT || 5173;
 const baseUrl = process.env.BASE || (isProd ? "/front_6th_chapter4-1/vanilla/" : "/");
-
+const templateHtml = isProd ? await fs.readFile("dist/vanilla/index.html", "utf-8") : "";
 const app = express();
-app.use(compression());
 
-// 환경 별 정적 파일 서빙 설정
+// 런타임에 결정되는 변수들 (개발/프로덕션 환경에 따라 달라짐)
+let template;
+let render;
+let vite;
+
+// MSW 서버 시작 (API 모킹을 위해)
+mockServer.listen({
+  onUnhandledRequest: "bypass",
+});
+
+// 환경별 정적 파일 서빙 및 미들웨어 설정
 if (isProd) {
+  // 프로덕션 환경: 빌드된 정적 파일 서빙
+  app.use(compression());
   app.use(baseUrl, sirv("dist/vanilla", { dev: false }));
 } else {
-  // vite 개발 서버는 middleware를 사용
+  // 개발 환경: Vite 개발 서버를 미들웨어로 사용
   const { createServer } = await import("vite");
-  const vite = await createServer({
+  vite = await createServer({
     server: { middlewareMode: true },
     appType: "custom",
+    baseUrl,
   });
 
   app.use(vite.middlewares);
 }
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// 환경 별 html 읽기
-const templateHtml = isProd
-  ? join(__dirname, baseUrl, "dist/vanilla/index.html")
-  : join(__dirname, baseUrl, "index.html");
-
-let template = fs.readFileSync(templateHtml, "utf-8");
-
-// SSG 렌더링 함수
-const render = async (url) => {
-  return template.replace("<!--app-html-->", `<div>hihi ${url}</div>`);
-};
-
-// 모든 라우트처리
+// 모든 라우트를 처리하는 SSR 핸들러
 app.get("*", async (req, res) => {
-  const url = req.originalUrl.replace(baseUrl, "");
-  const { html, head } = await render(url);
+  try {
+    if (!isProd) {
+      // 개발 환경: 매 요청마다 템플릿을 다시 읽고 변환
+      template = await fs.readFile("./index.html", "utf-8");
+      template = await vite.transformIndexHtml(req.originalUrl, template);
+      render = (await vite.ssrLoadModule("./src/main-server.js")).render;
+    } else {
+      // 프로덕션 환경: 미리 로드된 템플릿과 빌드된 모듈 사용
+      template = templateHtml;
+      render = (await import("./dist/vanilla-ssr/main-server.js")).render;
+    }
 
-  // html에 렌더링 결과 포함하여 응답
-  const finalHtml = template.replace("<!--app-html-->", html).replace("<!--app-head-->", head);
+    // SSR 렌더링 실행
+    const rendered = await render(req.originalUrl, req.query);
 
-  res.send(finalHtml);
+    // HTML 템플릿에 렌더링된 내용 삽입
+    const html = template
+      .replace(`<!--app-head-->`, rendered.head ?? "")
+      .replace(`<!--app-data-->`, `<script>window.__INITIAL_DATA__ = ${rendered.data}</script>`)
+      .replace(`<!--app-html-->`, rendered.html ?? "");
+
+    // 클라이언트에 완성된 HTML 응답
+    res.status(200).set({ "Content-Type": "text/html" }).send(html);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
-// 서버 시작
+// HTTP 서버 시작
 app.listen(port, () => {
-  console.log(`Server started at http://localhost:${port}`);
+  console.log(`🚀 Server started at http://localhost:${port}`);
+  console.log(`📁 Environment: ${isProd ? "production" : "development"}`);
+  console.log(`📍 Base URL: ${baseUrl}`);
 });
