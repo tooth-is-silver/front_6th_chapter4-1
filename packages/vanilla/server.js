@@ -1,10 +1,22 @@
 import express from "express";
+import compression from "compression";
+import sirv from "sirv";
 
 const prod = process.env.NODE_ENV === "production";
 const port = process.env.PORT || 5173;
 const base = process.env.BASE || (prod ? "/front_6th_chapter4-1/vanilla/" : "/");
 
 const app = express();
+
+// 환경 분기 - 구현 가이드 예시대로
+if (!prod) {
+  // Vite dev server + middleware (TODO: Vite 미들웨어 추가)
+  console.log("Development mode");
+} else {
+  // compression + sirv
+  app.use(compression());
+  app.use(base, sirv("./dist/vanilla", { extensions: [] }));
+}
 
 const render = () => {
   return `<div>안녕하세요</div>`;
